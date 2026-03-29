@@ -1,21 +1,5 @@
 [
   {
-    "input": "Tu es un assistant de recherche expert. Réponds à la question suivante en utilisant UNIQUEMENT les sources fournies ci-dessous.\nFournis des exemples de code si pertinent. Cite les documentations.\nCite les sources avec [1], [2], etc. Mentionne les incertitudes si nécessaire.\n\nQuestion : Quelle est la conduite à tenir devant une suspicion de TVP du mollet ?\n\nSources :\n[1] Département de médecine communautaire, de Premier recours et des urgences (https://www.hug.ch/sites/interhug/files/structures/m",
-    "output": "# Conduite à tenir devant une suspicion de Thrombose Veineuse Profonde (TVP) du mollet\n\n## 1. Résumé exécutif\nDevant une suspicion de thrombose veineuse profonde (TVP) du mollet, la prise en charge repose sur une anamnèse rigoureuse pour identifier les facteurs de risque, suivie d'une démarche diagnostique structurée selon un algorithme précis [1]. La TVP présente un risque majeur d'embolie pulmonaire (EP), complication responsable de la mortalité associée à la maladie (environ 30 % des patients avec TVP développent une EP) [1], [2]. Une fois le diagnostic confirmé ou fortement suspecté, le traitement est initié de manière ambulatoire et inclut l'anticoagulation ainsi qu'une contention élastique (bandes puis bas de classe 2) [1].\n\n## 2. Méthodologie\nL'analyse repose exclusivement sur les documents fournis par le Département de médecine communautaire, de Premier recours et des urgences (Hôpitaux Universitaires de Genève), spécifiquement la stratégie de prise en charge de la TVP (Caliri, 2017) [1], [2], [3].\n*   **Sources utilisées :**\n    *   [1] Caliri, 2017 - Points à retenir sur la stratégie TVP.\n    *   [2] Caliri, 202x - Épidémiologie et mortalité de la TVP.\n    *   [3] Caliri, 2x - Liste des facteurs de risque.\n*   **Limites :** Les sources fournies ne contiennent pas de code informatique, ni d'algorithmes visuels détaillés ou de protocoles de dosage des D-Dimères/échographies spécifiques. Elles se concentrent sur les principes généraux, les facteurs de risque et la prise en charge globale.\n\n## 3. Constatations (Findings)\n\n### 3.1. Épidémiologie et Gravité\nLa TVP touche 1 à 2 personnes pour 1 000 par an dans la population générale. L'incidence augmente significativement avec l'âge, atteignant 2 à 7 pour 1 000 chez les sujets de plus de 70 ans [2]. La complication majeure est l'embolie pulmonaire, qui survient chez environ 30 % des patients atteints de TVP [1]. La mortalité globale est estimée à 3 % à 30 jours et 13 % à 1 an, avec un risque nettement plus élevé ",
-    "score": 5,
-    "tags": [
-      "avancé",
-      "grossesse",
-      "néoplasie",
-      "mollet",
-      "précis.",
-      "donné,",
-      "acquises",
-      "hormonothérapie"
-    ],
-    "ts": "2026-03-27T16:56:25.111746"
-  },
-  {
     "input": "Tu es un expert en recherche documentaire.\nGénère exactement 2 requêtes de recherche web DIFFÉRENTES et COMPLÉMENTAIRES pour explorer tous les aspects de cette question.\nDomaine : général\nQuestion originale : \"On a recu un mail suspect avec un .docm en piece jointe. Etapes d analyse sans ouvrir le fichier ?\"\n\nRègles :\n- Chaque requête doit couvrir un angle différent (ex: définition, mécanisme, benchmark, cas d'usage)\n- Varie les formulations (anglais/français si pertinent)\n- Évite les redondance",
     "output": "[\"how to analyze .docm file without opening it safely\", \"étapes analyser fichier .docm suspect sans l'ouvrir\"]",
     "score": 5,

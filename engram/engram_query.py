@@ -6,7 +6,7 @@ tokenizes a query string, and shows hit/miss per n-gram, top predictions, and
 coverage statistics.
 
 Usage:
-    python3 engram_query.py --table table.engr --query "the patient has chronic lower back pain"
+    python3 engram_query.py --table table.engr --query "the architecture uses hybrid attention"
     python3 engram_query.py --table table.engr --query "def fibonacci(n):" --top-k 10
     python3 engram_query.py --table table.engr --stats
 """
@@ -390,7 +390,7 @@ def main():
         description="Engram Query Tool — Query .engr n-gram hash tables",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples:
-  python3 engram_query.py --table table.engr --query "the patient has chronic lower back pain"
+  python3 engram_query.py --table table.engr --query "the architecture uses hybrid attention"
   python3 engram_query.py --table table.engr --query "def fibonacci(n):" --top-k 10
   python3 engram_query.py --table table.engr --stats
 """)

@@ -229,7 +229,7 @@ MEDICAL_CRITIC_SYSTEM = textwrap.dedent("""\
     1. Qualité des preuves citées par CHAQUE camp : biais, échantillons, conflits d'intérêts
     2. Évalue la force relative des arguments pour et contre
     3. Identifie les points d'accord entre les deux perspectives
-    4. Contexte patient : comorbidités, interactions médicamenteuses, populations vulnérables
+    4. Contexte utilisateur : contraintes techniques, cas limites, populations cibles
     5. Ne prends PAS parti — analyse objectivement les deux positions
     6. Structure : Forces du POUR → Forces du CONTRE → Consensus → Questions ouvertes
     7. Maximum 600 mots""")

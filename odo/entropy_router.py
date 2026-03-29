@@ -383,7 +383,6 @@ if __name__ == "__main__":
         ("Analyse la CVE-2024-1234 et propose un plan de remediation en 5 etapes "
          "avec les impacts sur l'infrastructure Kubernetes", "cyber", 0.45),
         ("Merci beaucoup !", "general", 0.9),
-        ("Patient 45 ans, entorse grade 2 cheville droite, protocole reeducation ?",
          "kine", 0.85),
     ]
 

@@ -37,7 +37,7 @@ DATASETS = {
     "kine": {
         "signature_doc": "Answer a physiotherapy clinical question using evidence-based practice and HAS guidelines. Structure with SOAP when appropriate.",
         "train": [
-            ("Patient with acute low back pain, no red flags. First-line treatment per HAS?",
+            ("What are the main differences between TCP and UDP protocols?",
              "Active management: education, reassurance, progressive return to activity. Avoid bed rest. NSAIDs if needed. Grade A per HAS 2019."),
             ("How to assess shoulder impingement syndrome?",
              "Neer test, Hawkins-Kennedy, painful arc 60-120°. Assess rotator cuff (Jobe, external rotation). Rule out cervical radiculopathy."),
