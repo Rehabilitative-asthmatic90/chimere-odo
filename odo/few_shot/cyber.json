@@ -1,0 +1,8 @@
+[
+  {
+    "input": "analyse cette IP: 185.220.101.42",
+    "output": "## Analyse CTI — 185.220.101.42\n\n### Classification\n- **Type** : Nœud de sortie Tor (connu)\n- **Sévérité** : MEDIUM\n- **MITRE ATT&CK** : T1090.003 (Proxy: Multi-hop Proxy)\n\n### Sources\n- AbuseIPDB : 98% confidence score, 1247 rapports en 30 jours\n- OTX AlienVault : associé à des scans SSH bruteforce\n- Shodan : ports ouverts 9001 (Tor ORPort), 9030 (Tor DirPort)\n\n### Contexte\n- Organisation : Tor Exit Node (DE)\n- Activité observée : SSH bruteforce, web scanning\n- Dernière activité malveillante : < 24h\n\n### Recommandations\n1. **Bloquer** en entrée sur le pare-feu (sauf si Tor légitime)\n2. **Ne pas bloquer** en sortie (casse la connectivité utilisateur Tor)\n3. **Monitorer** les connexions depuis cette IP dans les logs\n4. **Corréler** avec d'autres IP Tor dans la même plage (185.220.101.0/24)\n\n### IOC\n```\nip: 185.220.101.42\ntype: tor-exit-node\nseverity: medium\nmitre: T1090.003\n```",
+    "score": 5,
+    "tags": ["ioc", "ip", "tor", "MITRE"]
+  }
+]

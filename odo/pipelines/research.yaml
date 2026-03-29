@@ -1,0 +1,74 @@
+name: "Research Agent"
+description: "Deep research with structured reports and citations"
+
+# Enrichment (ODO injects context from tools before LLM)
+enrich:
+  rag: true
+  rag_collection: "auto"
+  web: true
+
+# Model parameters (creative enough for synthesis)
+params:
+  temperature: 0.6
+  top_p: 0.95
+  top_k: 20
+  min_p: 0.05
+  presence_penalty: 0.0
+  max_tokens: 8192
+
+# Thinking mode
+thinking:
+  enabled: true
+  budget: 8192          # maximal reasoning budget
+  abf_threshold: 0.0    # ABF disabled -- always think fully
+
+# System prompt (prepended to user's system message)
+system_prompt: |
+  You are a research analyst producing structured, citation-backed reports.
+  Every factual claim must be traceable to a source.
+  Use academic citation format (Author, Year) and provide full references at the end.
+  Structure reports with: Executive Summary, Methodology, Findings, Analysis, Conclusion.
+  Identify contradictions between sources and flag confidence levels.
+  Prefer primary sources over secondary when available.
+
+# Engram table (WRITE mode -- ingest search results into engram)
+engram:
+  table: "~/.chimere/engram/tables/research.engr"
+  alpha: 0.2
+  mode: "write"  # ingest discovered n-grams from search results
+
+# LoRA adapter (hot-swap)
+lora:
+  path: null
+
+# Grammar constraint
+grammar: null
+
+# Tools allowed
+tools_allowed: ["web_search"]
+
+# Multi-agent pipeline steps (sequential)
+pipeline:
+  - agent: "scout"
+    params: { temperature: 0.5, max_tokens: 4096 }
+    system_suffix: |
+      You are the research scout. Execute 5 diverse search queries covering different angles of the topic.
+      Use deep search mode. Prioritize academic sources (arXiv, PubMed, Google Scholar).
+      For each result, extract: title, authors, date, key findings, relevance score (1-5).
+      Deduplicate and rank by relevance.
+    tools_allowed: ["web_search"]
+    iterations: 5  # run 5 search rounds with refined queries
+  - agent: "analyze"
+    params: { temperature: 0.6, max_tokens: 4096 }
+    system_suffix: |
+      You are the research analyst. Synthesize the scout's findings.
+      Identify themes, consensus points, and contradictions across sources.
+      Assess evidence quality and assign confidence levels (high/medium/low) to each finding.
+      Flag gaps in the evidence that need further investigation.
+  - agent: "write_report"
+    params: { temperature: 0.7, max_tokens: 8192 }
+    system_suffix: |
+      You are the report writer. Produce a polished, structured research report.
+      Include: Executive Summary, Methodology, Findings (with inline citations), Analysis, Conclusion, References.
+      Use clear section headers. Write for an expert audience.
+      Every claim must cite its source. End with a full reference list.

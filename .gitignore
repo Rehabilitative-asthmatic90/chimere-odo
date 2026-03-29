@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Data
+*.engr
+*.db
+*.sqlite3
+data/
+logs/
+
+# Secrets
+.env
+.env.*
+credentials/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backups
+*.bak
+*.pre-dspy

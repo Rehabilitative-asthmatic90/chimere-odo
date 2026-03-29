@@ -1,0 +1,130 @@
+[
+  {
+    "input": "write a python function to read a CSV and compute statistics",
+    "output": "```python\nimport csv\nfrom statistics import mean, median, stdev\nfrom pathlib import Path\n\n\ndef csv_stats(path: str, column: str) -> dict:\n    \"\"\"Compute basic statistics for a numeric column in a CSV file.\"\"\"\n    values = []\n    with open(path, newline='', encoding='utf-8') as f:\n        reader = csv.DictReader(f)\n        for row in reader:\n            try:\n                values.append(float(row[column]))\n            except (ValueError, KeyError):\n                continue\n\n    if not values:\n        return {\"error\": f\"No numeric values found in column '{column}'\"}\n\n    return {\n        \"count\": len(values),\n        \"mean\": round(mean(values), 2),\n        \"median\": round(median(values), 2),\n        \"stdev\": round(stdev(values), 2) if len(values) > 1 else 0,\n        \"min\": min(values),\n        \"max\": max(values),\n    }\n```",
+    "score": 5,
+    "tags": [
+      "python",
+      "csv",
+      "statistics"
+    ]
+  },
+  {
+    "input": "crée un script bash pour monitorer l'espace disque",
+    "output": "```bash\n#!/bin/bash\n# disk_monitor.sh — Alert when disk usage exceeds threshold\nTHRESHOLD=${1:-90}\nALERT_CMD=\"echo\"  # Replace with notify-send or telegram\n\ndf -h --output=pcent,target | tail -n +2 | while read pct mount; do\n    usage=${pct%\\%}\n    if [ \"$usage\" -ge \"$THRESHOLD\" ]; then\n        $ALERT_CMD \"DISK ALERT: $mount at ${pct} (threshold: ${THRESHOLD}%)\"\n    fi\ndone\n```\n\nUsage: `./disk_monitor.sh 85` (alerte si >85%)",
+    "score": 5,
+    "tags": [
+      "bash",
+      "monitoring",
+      "disk"
+    ]
+  },
+  {
+    "input": "Comment configurer un reverse proxy nginx avec SSL et rate limiting ?",
+    "output": "Voici une configuration complète et sécurisée pour un serveur **Nginx** agissant comme reverse proxy, incluant la gestion du **SSL** (avec Let's Encrypt recommandé) et l'activation du **rate limiting** (limitation de débit) pour protéger vos services contre les attaques DDoS ou les abus.\n\n### 1. Prérequis\n\n*   Un serveur Nginx installé.\n*   Un certificat SSL valide (ex: obtenu via Certbot/Let's Encrypt).\n*   Une application backend à proxyfier (ex: `http://localhost:3000`).\n\n### 2. Configuration du Rate Limiting\n\nLa limitation de débit doit être définie dans le bloc `http` du fichier principal (`/etc/nginx/nginx.conf`) pour être accessible dans les blocs `server`.\n\nOuvrez `/etc/nginx/nginx.conf` et ajoutez ou modifiez le bloc `http` :\n\n```nginx\nhttp {\n    # ... autres configurations globales ...\n\n    # Définition de la zone de limite de débit\n    # nom: $binary_remote_addr (limite par adresse IP)\n    # zone: 10m signifie 10 méga-octets de mémoire pour stocker les clés\n    # rate: 10r/s signifie 10 requêtes par seconde par IP\n    # burst: permet de tolérer une légère augmentation temporaire\n    # nodelay: traite les requêtes du burst immédiatement sans attendre\n    limit_req_zone $binary_remote_addr zone=one:10m rate=10r/s;\n\n    # Configuration pour les requêtes trop nombreuses (503 Service Unavailable)\n    limit_req_status 429;\n}\n```\n\n### 3. Configuration du Reverse Proxy avec SSL\n\nCréez un nouveau fichier de configuration pour votre site, par exemple `/etc/nginx/sites-available/mon-site.conf`.\n\n```nginx\nserver {\n    # Écoute en HTTPS uniquement\n    listen 443 ssl http2;\n    server_name mon-domaine.com;\n\n    # Chemins vers les certificats SSL\n    ssl_certificate /etc/letsencrypt/live/mon-domaine.com/fullchain.pem;\n    ssl_certificate_key /etc/letsencrypt/live/mon_domaine.com/privkey.pem;\n\n    # Bonnes pratiques de sécurité SSL\n    ssl_protocols TLSv1.2 TLSv1.3;\n    ssl_ciphers HIGH:!aNULL:!MD5;\n    ssl_prefer_server_ciphers on;\n\n    # --- CONFIGURATION RATE LIMITING",
+    "score": 5,
+    "tags": [
+      "comment",
+      "reverse",
+      "configurer",
+      "limiting",
+      "proxy",
+      "nginx"
+    ],
+    "ts": "2026-03-26T21:58:16.797675"
+  },
+  {
+    "input": "Implémente un LRU cache thread-safe en Go avec generics",
+    "output": "Voici une implémentation rigoureuse d'un cache LRU (Least Recently Used) thread-safe en Go, utilisant les **Generics** pour la flexibilité des types de données.\n\n### Analyse et Raisonnement Algorithmique\n\n1.  **Structure de Données** :\n    *   Pour atteindre une complexité $O(1)$ pour les opérations `Get` et `Put`, nous combinons deux structures :\n        *   Une **Map** (`map[K]*Node`) pour accéder rapidement aux nœuds par clé.\n        *   Une **Double Linked List** (`List`) pour maintenir l'ordre d'utilisation. Le dernier élément utilisé est à la fin, le moins utilisé au début.\n    *   **Généricité** : Utilisation de `interface{}` contrainte par `any` dans les versions récentes de Go (1.18+), permettant de stocker n'importe quel type de clé (`K`) et de valeur (`V`).\n\n2.  **Synchronisation (Thread Safety)** :\n    *   Le cache doit être accessible simultanément par plusieurs goroutines.\n    *   Nous utilisons `sync.RWMutex`.\n        *   `RLock()` pour les lectures (`Get`) afin de permettre plusieurs lectures simultanées.\n        *   `Lock()` pour les écritures (`Put`, suppression d'éléments) pour garantir l'exclusion mutuelle.\n\n3.  **Logique LRU** :\n    *   **Get(k)** : Si la clé existe, on la déplace à la fin de la liste (marquant comme \"la plus récente\") et on retourne la valeur. Si non, retourne `nil` (ou valeur par défaut).\n    *   **Put(k, v)** :\n        *   Si la clé existe : on met à jour la valeur et on déplace le nœud à la fin.\n        *   Si la clé est nouvelle : on crée un nouveau nœud. Si le cache est plein (dépassement de `capacity`), on supprime le premier nœud de la liste (le moins récent) avant d'ajouter le nouveau.\n\n4.  **Gestion des Erreurs et Edge Cases** :\n    *   Capacité 0 ou négative : Doit être gérée (généralement retourne une erreur ou ignore l'opération, ici nous gérons la capacité 0 en bloquant les mises).\n    *   Clés nulles : En Go, les clés génériques ne peuvent pas être `nil` si le type est pointeur, mais nous devons gérer le cas où l'",
+    "score": 5,
+    "tags": [
+      "thread-safe",
+      "implémente",
+      "cache",
+      "generics"
+    ],
+    "ts": "2026-03-27T16:35:18.918082"
+  },
+  {
+    "input": "Comment implémenter du CSP (Content Security Policy) strict ?",
+    "output": "Implémenter une **Content Security Policy (CSP)** stricte est l'une des mesures de sécurité les plus efficaces pour prévenir les attaques par injection de scripts (XSS) et d'autres attaques de type \"Man-in-the-Middle\". Cependant, une configuration trop stricte peut casser le site si elle n'est pas correctement testée.\n\nVoici une approche structurée pour implémenter une CSP stricte et sécurisée.\n\n### 1. Comprendre les principes de base\n\nUne CSP fonctionne comme une liste de règles (directives) qui dit au navigateur : \"Seulement ces sources sont autorisées\".\n- **`default-src`** : La règle par défaut si aucune autre directive n'est spécifiée.\n- **`script-src`** : Contrôle où le JavaScript peut être chargé ou exécuté.\n- **`style-src`** : Contrôle les feuilles de style CSS.\n- **`img-src`** : Contrôle les images.\n- **`connect-src`** : Contrôle les requêtes AJAX/WebSocket.\n- **`frame-src` / `child-src`** : Contrôle les iframes.\n\n**Règle d'or :** Évitez `'unsafe-inline'` et `'unsafe-eval'` au maximum. Ils annulent la plupart des protections.\n\n### 2. Méthode de déploiement\n\nIl existe deux façons principales de transmettre la CSP :\n\n#### A. En-tête HTTP (Recommandé)\nC'est la méthode la plus fiable car elle est appliquée avant même que le navigateur ne commence à analyser le HTML.\n\nExemple d'en-tête :\n```http\nContent-Security-Policy: default-src 'self'; script-src 'self' https://cdn.trusted-partner.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com;\n```\n\n#### B. Balise Meta (Pour le développement ou les cas spécifiques)\nMoins sécurisé car l'en-tête doit être présent dans le `<head>` avant le chargement du CSS ou JS. Déconseillé pour une production critique.\n\n```html\n<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'self'\">\n```\n\n### 3. Étapes d'implémentation progressive (Stratégie de déploiement)\n\nNe passez pas directement à un mode strict (`enforce`) sans test, sinon vous casserez votre site.\n\n#### Étap",
+    "score": 5,
+    "tags": [
+      "comment",
+      "strict",
+      "security",
+      "policy)",
+      "(content",
+      "implémenter"
+    ],
+    "ts": "2026-03-27T16:54:23.709026"
+  },
+  {
+    "input": "Écris un CLI en Rust avec clap qui parse des fichiers CSV",
+    "output": "Voici une solution complète pour une application CLI en Rust utilisant la bibliothèque `clap` pour parser des fichiers CSV.\n\nCette implémentation inclut :\n1.  **Dépendances** : `clap` (pour l'interface CLI) et `csv` (pour la lecture robuste des fichiers).\n2.  **Architecture** : Séparation claire entre la définition des arguments et la logique de traitement.\n3.  **Gestion des erreurs** : Utilisation de `Result` et propagation des erreurs via `anyhow` (optionnel mais recommandé) ou `std::io::Error` pour une solution standard sans dépendance supplémentaire. Ici, j'utilise `std` pour rester léger et sans dépendance externe complexe.\n4.  **Fonctionnalités** : Lecture du fichier, affichage de l'entête, et conversion des lignes en structures de données.\n\n### Prérequis\n\nAjoutez les dépendances suivantes dans votre fichier `Cargo.toml` :\n\n```toml\n[dependencies]\nclap = { version = \"4.4\", features = [\"derive\"] }\ncsv = \"1.3\"\n```\n\n### Code Source (`main.rs`)\n\n```rust\nuse clap::Parser;\nuse csv::ReaderBuilder;\nuse std::error::Error;\nuse std::fs::File;\nuse std::io;\nuse std::path::PathBuf;\n\n/// CLI simple pour parser et afficher le contenu de fichiers CSV.\n/// \n/// Ce programme démontre l'utilisation de clap pour la gestion des arguments\n/// et de la bibliothèque csv pour un parsing robuste.\n#[derive(Parser, Debug)]\n#[command(author, version, about, long_about = None)]\nstruct Args {\n    /// Chemin vers le fichier CSV à parser\n    #[arg(value_name = \"FILE\")]\n    input_file: PathBuf,\n\n    /// Nombre maximum de lignes à afficher (0 pour tout afficher)\n    #[arg(short, long, default_value_t = 0)]\n    limit: usize,\n\n    /// Affiche uniquement les données brutes sans en-têtes\n    #[arg(long)]\n    no_headers: bool,\n}\n\n/// Structure représentant une ligne CSV générique (pour affichage)\nstruct CsvRow {\n    headers: Vec<String>,\n    values: Vec<String>,\n}\n\nfn run(args: Args) -> Result<(), Box<dyn Error>> {\n    // Vérification de l'existence du fichier\n    if !args.input_file.exists() {\n      ",
+    "score": 5,
+    "tags": [
+      "écris",
+      "fichiers",
+      "parse"
+    ],
+    "ts": "2026-03-27T16:55:15.079504"
+  },
+  {
+    "input": "Ecris une fonction Python qui verifie si une chaine de parentheses est valide incluant () [] {}",
+    "output": "### Raisonnement Logique\n\n1.  **Analyse du Problème** :\n    *   **Entrée** : Une chaîne de caractères `s` contenant uniquement des parenthèses `()`, crochets `[]` et accolades `{}`.\n    *   **Sortie** : Un booléen (`True` si valide, `False` sinon).\n    *   **Règles de validité** :\n        1.  Chaque parenthèse d'ouverture doit avoir une correspondance fermante correspondante.\n        2.  Les parenthèses doivent être fermées dans l'ordre correct (l'ordre d'ouverture doit être inversé pour la fermeture).\n        3.  Chaque caractère de fermeture doit correspondre au type de la dernière parenthèse d'ouverte non fermée.\n\n2.  **Choix de l'Algorithme** :\n    *   Le problème nécessite de gérer une séquence où l'ordre est crucial (premier entré, dernier sorti). C'est la définition classique d'une structure de données **Pile (Stack)**.\n    *   **Approche** :\n        *   Parcourir la chaîne caractère par caractère.\n        *   Si le caractère est une ouverture (`(`, `[`, `{`), l'empiler.\n        *   Si le caractère est une fermeture (`)`, `]`, `}`) :\n            *   Vérifier si la pile est vide. Si oui, il n'y a pas d'ouverture correspondante -> **Retourner `False`**.\n            *   Dépiler l'élément du sommet.\n            *   Vérifier si l'élément dépilé correspond au type de fermeture actuel (ex: `)` correspond à `(`). Si non -> **Retourner `False`**.\n        *   Après avoir parcouru toute la chaîne, vérifier si la pile est vide.\n            *   Si elle est vide, toutes les ouvertures ont été fermées correctement -> **Retourner `True`**.\n            *   Si elle n'est pas vide, il reste des ouvertures sans fermeture -> **Retourner `False`**.\n\n3.  **Complexité** :\n    *   **Temps** : O(n), où n est la longueur de la chaîne. Nous parcourons chaque caractère exactement une fois.\n    *   **Espace** : O(n) dans le pire des cas (ex: `((((...`), où tous les caractères sont empilés.\n\n4.  **Gestion des Cas Limites (Edge Cases)** :\n    *   Chaîne vide : Doit retourner `True` (selon l",
+    "score": 5,
+    "tags": [
+      "ecris",
+      "parentheses",
+      "valide",
+      "verifie",
+      "chaine",
+      "incluant",
+      "python",
+      "fonction"
+    ],
+    "ts": "2026-03-27T18:14:01.550798"
+  },
+  {
+    "input": "Implemente le tri fusion merge sort en Python",
+    "output": "### Raisonement Logique et Analyse Algorithmique\n\n1.  **Objectif** : Implémenter l'algorithme de tri fusion (Merge Sort) en Python.\n2.  **Principe de l'algorithme** :\n    *   **Diviser (Divide)** : L'approche est \"Diviser pour régner\". On divise récursivement le tableau en deux moitiés jusqu'à ce que chaque sous-tableau ne contienne qu'un seul élément (qui est par définition trié).\n    *   **Conquérir (Conquer)** : On fusionne les sous-tableaux triés pour former des tableaux triés de plus en plus grands.\n    *   **Fusionner (Merge)** : C'est l'étape critique. On compare l'élément de tête des deux sous-tableaux en cours de fusion, on place le plus petit dans le tableau de résultat et on avance le curseur de ce sous-tableau. On répète jusqu'à épuisement d'un des sous-tableaux, puis on copie le reste de l'autre.\n3.  **Complexité** :\n    *   **Temps** : $O(n \\log n)$ dans tous les cas (meilleur, moyen, pire). C'est un algorithme stable et prévisible.\n    *   **Espace** : $O(n)$ car l'algorithme nécessite un tableau temporaire pour stocker les éléments pendant la fusion.\n4.  **Gestion des cas limites (Edge Cases)** :\n    *   Tableau vide (`[]`) : Doit retourner `[]`.\n    *   Tableau d'un seul élément : Doit retourner le tableau tel quel.\n    *   Tableau déjà trié ou trié à l'envers : L'algorithme doit les gérer correctement sans erreur.\n    *   Tableau avec des éléments égaux : L'algorithme de fusion standard est stable (conserve l'ordre relatif des éléments égaux) si l'implémentation de la fusion est correcte (priorité au côté gauche en cas d'égalité).\n5.  **Choix d'implémentation** :\n    *   Utilisation de la récursion pour la division.\n    *   Création explicite d'un tableau temporaire pour la fusion afin de garantir la stabilité et la clarté.\n    *   Typage strict (type hints) pour la robustesse.\n    *   Commentaires explicites pour la maintenance.\n\n### Code Python\n\nVoici l'implémentation complète, robuste et documentée du tri fusion.\n\n```python\nfrom typing import Li",
+    "score": 5,
+    "tags": [
+      "merge",
+      "python",
+      "fusion",
+      "implemente"
+    ],
+    "ts": "2026-03-27T18:16:18.538124"
+  },
+  {
+    "input": "Implemente un rate limiter token bucket en Python",
+    "output": "Voici une implémentation robuste, thread-safe et optimisée d'un limiteur de débit (Rate Limiter) basé sur l'algorithme du **Seau à Tokens (Token Bucket)** en Python.\n\nCette implémentation est conçue pour être utilisée dans des environnements concurrents (serveurs web, microservices) et inclut une gestion précise du temps et des erreurs.\n\n### Analyse Logique et Conception\n\nAvant de coder, voici la dérivation logique de l'algorithme :\n\n1.  **Principe du Token Bucket** :\n    *   Un \"seau\" a une capacité maximale (`capacity`).\n    *   Des \"jetons\" sont ajoutés au seau à une vitesse constante (`refill_rate` par seconde).\n    *   Le seau ne peut jamais contenir plus de `capacity` jetons.\n    *   Pour qu'une requête passe, elle doit consommer 1 jeton.\n    *   Si le seau est vide, la requête est rejetée (ou mise en attente selon la politique choisie).\n\n2.  **Gestion du Temps et du Remplissage (Refill)** :\n    *   Il est inefficace de faire tourner une boucle pour ajouter des jetons.\n    *   À chaque appel, on calcule le temps écoulé (`delta_time`) depuis la dernière mise à jour.\n    *   On calcule les jetons à ajouter : `tokens_to_add = delta_time * refill_rate`.\n    *   On met à jour le nombre de jetons actuel : `current_tokens = min(capacity, current_tokens + tokens_to_add)`.\n\n3.  **Sécurité des Threads (Thread Safety)** :\n    *   Dans un environnement multi-thread (ex: GIL Python avec plusieurs processus ou boucles asynchrones), les lectures et écritures sur les variables partagées doivent être atomiques.\n    *   Nous utiliserons un `threading.Lock` pour protéger la section critique (calcul du temps, ajout de jetons, vérification et consommation).\n\n4.  **Complexité** :\n    *   Temps : O(1) par opération (calculs mathématiques simples + verrouillage constant).\n    *   Espace : O(1) (stockage de quelques variables d'état).\n\n5.  **Cas Bords** :\n    *   `refill_rate` nul ou négatif : Doit lever une erreur ou se comporter comme un blocage total.\n    *   `capacity` nulle : Doi",
+    "score": 5,
+    "tags": [
+      "bucket",
+      "implemente",
+      "python",
+      "limiter",
+      "token"
+    ],
+    "ts": "2026-03-27T18:28:30.530148"
+  },
+  {
+    "input": "Implementer un block diffusion drafter en Python/CUDA pour speculative decoding LLM : mask-predict, flow matching, single-shot inference",
+    "output": "En tant qu'Ingénieur Algorithmique Senior, je dois d'abord clarifier un point critique avant de fournir le code : **la diffusion par blocs (Block Diffusion) n'est pas une méthode de \"drafter\" standard pour le speculative decoding classique (comme le tirage de tokens séquentiels).**\n\nLe speculative decoding classique utilise un petit modèle (drafter) pour prédire $k$ tokens séquentiellement ($t_1, t_2, \\dots, t_k$).\nLa **diffusion** génère des tokens de manière non-autorégressive (parallèle), mais elle est généralement utilisée comme **modèle cible** ou pour la génération complète, pas comme un \"drafter\" qui doit produire une séquence parfaitement ordonnée pour être acceptée par un modèle cible autorégressif sans correction complexe.\n\nCependant, pour répondre à votre demande technique spécifique (implémenter un mécanisme de *drafting* basé sur la diffusion pour le *speculative decoding*), nous devons adapter le paradigme :\n1.  **Approche :** Nous allons implémenter un **Flow Matching** (plus stable que la diffusion pure) qui génère un bloc de $k$ tokens en une seule passe (single-shot) ou en quelques étapes itératives, puis nous appliquerons un mécanisme de **Mask-Predict** (comme dans les modèles de traduction ou les approches récentes comme *Speculative Decoding with Diffusion Drafters*) où le modèle cible corrige les tokens générés par le modèle de diffusion.\n2.  **Optimisation :** Le code ci-dessous est une implémentation **PyTorch** optimisée avec des primitives CUDA (via `torch.compile` et `torch.nn.functional`) pour simuler l'inférence à haut débit. Une implémentation CUDA native (C++/CudaKernel) serait nécessaire pour une production réelle, mais le code PyTorch ci-dessous est la base logique rigoureuse et portable.\n\n### Analyse Algorithmique et Choix\n\n*   **Algorithme :** Flow Matching (Conditional Flow Matching). Contrairement à la diffusion standard (DDPM), le Flow Matching apprend un champ de vecteurs direct $v_t$ pour interpoler entre un bruit gaussien et",
+    "score": 5,
+    "tags": [
+      "speculative",
+      "single-shot",
+      "drafter",
+      "decoding",
+      "diffusion",
+      "mask-predict,",
+      "inference",
+      "matching,"
+    ],
+    "ts": "2026-03-27T23:53:16.051704"
+  }
+]

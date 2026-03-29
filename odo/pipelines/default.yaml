@@ -1,0 +1,42 @@
+name: "Default Agent"
+description: "General-purpose conversational assistant"
+
+# Model parameters (balanced)
+params:
+  temperature: 0.7
+  top_p: 0.9
+  top_k: 20
+  min_p: 0.05
+  presence_penalty: 0.0
+  max_tokens: 4096
+
+# Thinking mode
+thinking:
+  enabled: true
+  budget: 2048          # moderate reasoning budget
+  abf_threshold: 0.5    # balanced ABF -- think when needed
+
+# System prompt (prepended to user's system message)
+system_prompt: |
+  You are a helpful, knowledgeable assistant.
+  Answer clearly and concisely. When a question requires nuance, provide balanced perspectives.
+  If you are unsure, say so rather than guessing.
+  Adapt your tone and detail level to the user's needs.
+
+# Engram table (domain-specific n-grams)
+engram:
+  table: null  # no domain-specific engram for default
+  alpha: 0.0
+
+# LoRA adapter (hot-swap)
+lora:
+  path: null
+
+# Grammar constraint
+grammar: null
+
+# Tools allowed (all available)
+tools_allowed: ["run_code", "web_search", "file_read", "file_write", "calculator", "ioc_lookup"]
+
+# Single agent (no multi-step pipeline)
+pipeline: null

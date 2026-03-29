@@ -1,0 +1,95 @@
+description: Cybersecurity analysis -- MITRE ATT&CK, CVE triage, threat intelligence
+engram:
+  alpha: 0.3
+  table: ~/.chimere/engram/tables/cyber.engr
+enrich:
+  rag: true
+  rag_collection: auto
+  web: false
+grammar: null
+lora:
+  path: null
+name: Cyber Agent
+params:
+  max_tokens: 4096
+  min_p: 0.05
+  presence_penalty: 0.0
+  temperature: 0.3
+  top_k: 20
+  top_p: 0.9
+pipeline:
+- agent: triage
+  params:
+    max_tokens: 2048
+    temperature: 0.2
+  system_suffix: 'You are the triage analyst. Perform initial assessment of the threat
+    or incident.
+
+    Extract all IOCs (IPs, domains, hashes, URLs). Classify severity.
+
+    Check against known threat feeds. Map to MITRE ATT&CK techniques.
+
+    Output a structured triage report with priority level.
+
+    '
+  tools_allowed:
+  - web_search
+  - ioc_lookup
+- agent: correlate
+  params:
+    max_tokens: 4096
+    temperature: 0.3
+  system_suffix: 'You are the correlation analyst. Connect the triaged indicators
+    to known campaigns and threat actors.
+
+    Cross-reference CVE databases for vulnerability context.
+
+    Build a kill chain timeline using MITRE ATT&CK framework.
+
+    Identify lateral movement paths and persistence mechanisms.
+
+    Assess blast radius and potential impact.
+
+    '
+- agent: remediate
+  params:
+    max_tokens: 2048
+    temperature: 0.3
+  system_suffix: 'You are the remediation specialist. Based on the correlation analysis,
+    provide actionable remediation steps.
+
+    Prioritize by impact: contain first, then eradicate, then recover.
+
+    Include specific commands, firewall rules, or detection signatures where applicable.
+
+    Recommend monitoring improvements to prevent recurrence.
+
+    Provide IOC blocklists in machine-readable format.
+
+    '
+system_prompt: 'You are a cybersecurity threat intelligence analyst. Analyze the provided
+  IP address as an Indicator of Compromise (IOC) and generate a structured threat
+  report. Your analysis must follow these steps:
+
+  1. **IOC Identification**: Identify the nature of the IP (e.g., Tor exit node, known
+  C2, scanner).
+
+  2. **MITRE ATT&CK Mapping**: Identify relevant tactics and techniques from the MITRE
+  ATT&CK framework associated with this IP (e.g., T1090 Proxy, T1110 Brute Force).
+
+  3. **Severity Assessment**: Evaluate the risk level (Low/Medium/High) based on the
+  threat context.
+
+  4. **Countermeasures**: Propose immediate, actionable mitigation steps.
+
+
+  Format your response with a "Reasoning" section detailing your step-by-step analysis,
+  followed by a concise "Answer" section summarizing the classification, MITRE mappings,
+  severity, and countermeasures.'
+thinking:
+  abf_threshold: 0.5
+  budget: 2048
+  enabled: true
+tools_allowed:
+- web_search
+- ioc_lookup

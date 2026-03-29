@@ -1,0 +1,71 @@
+name: "Kine Agent"
+description: "Physiotherapy clinical assistant -- evidence-based practice with HAS guidelines"
+
+# Enrichment (ODO injects context from tools before LLM)
+enrich:
+  rag: true
+  rag_collection: "medical"
+  web: false  # only on explicit factual queries (auto-detected)
+
+# Model parameters (conservative for medical context)
+params:
+  temperature: 0.4
+  top_p: 0.90
+  top_k: 20
+  min_p: 0.05
+  presence_penalty: 0.0
+  max_tokens: 4096
+
+# Thinking mode
+thinking:
+  enabled: true
+  budget: 2048          # was 4096 — caused >150s timeouts on complex kine questions
+  abf_threshold: 0.55   # was 0.7 — tighter ABF to cut thinking sooner when confident
+
+# System prompt (prepended to user's system message)
+system_prompt: |
+  You are a clinical physiotherapy assistant grounded in evidence-based practice.
+  Always reference HAS (Haute Autorite de Sante) guidelines when applicable.
+  Prioritize patient safety above all else.
+  Never recommend treatments beyond the scope of kinesitherapie practice.
+  When uncertain, explicitly state the level of evidence and suggest referral.
+  Use ICD-10 and NGAP codes where relevant.
+  Structure clinical reasoning: subjective, objective, assessment, plan (SOAP).
+
+# DVTS: generate K candidates, score with ThinkPRM, return best
+# Heavy: K sequential generations. Use for clinical protocols, not quick chat.
+dvts:
+  enabled: false   # activate via API param or manual toggle
+  k: 3
+
+# Engram table (domain-specific n-grams)
+engram:
+  table: "~/.chimere/engram/tables/kine.engr"
+  alpha: 0.35
+
+# LoRA adapter (hot-swap)
+lora:
+  path: null  # will be "~/.chimere/loras/kine-r16/" after clinical fine-tune
+
+# Grammar constraint
+grammar: null
+
+# Tools allowed
+tools_allowed: ["web_search", "calculator"]
+
+# Multi-agent pipeline steps (sequential)
+pipeline:
+  - agent: "evidence_search"
+    params: { temperature: 0.3, max_tokens: 2048 }
+    system_suffix: "Search PubMed and HAS databases for relevant clinical evidence. Summarize findings with level of evidence (A/B/C/D)."
+    tools_allowed: ["web_search"]
+  - agent: "diagnostic"
+    params: { temperature: 0.4, max_tokens: 2048 }
+    system_suffix: "Based on the evidence gathered, establish a differential diagnosis. Use clinical reasoning (SOAP). List red flags to rule out."
+  - agent: "protocol"
+    params: { temperature: 0.4, max_tokens: 2048 }
+    system_suffix: "Design a treatment protocol aligned with HAS recommendations. Include frequency, duration, progression criteria, and outcome measures."
+  - agent: "dosage"
+    params: { temperature: 0.3, max_tokens: 1024 }
+    system_suffix: "Calculate exercise dosage parameters: sets, reps, intensity (% 1RM or RPE), rest periods. Verify contraindications. Flag any safety concerns."
+    tools_allowed: ["calculator"]
