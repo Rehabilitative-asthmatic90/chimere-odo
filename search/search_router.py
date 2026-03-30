@@ -31,7 +31,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-CHIMERE_HOME = Path.home() / ".chimere"
+CHIMERE_HOME = Path(os.environ.get("CHIMERE_HOME", str(Path.home() / ".chimere")))
 CACHE_DB = CHIMERE_HOME / "cache" / "search_router.db"
 BUDGET_FILE = CHIMERE_HOME / "cache" / "brave_budget.json"
 LOG_FILE = CHIMERE_HOME / "cache" / "search_router.log"

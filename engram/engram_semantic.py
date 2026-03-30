@@ -44,7 +44,7 @@ def get_embedding(text: str, dim: int = EMBEDDING_DIM) -> np.ndarray:
             "model": "qwen35"
         }).encode()
         req = urllib.request.Request(
-            "http://127.0.0.1:8081/v1/embeddings",
+            os.environ.get("EMBEDDING_URL", os.environ.get("ODO_BACKEND", "http://127.0.0.1:8081")) + "/v1/embeddings",
             data=req_data,
             headers={"Content-Type": "application/json"},
         )

@@ -14,7 +14,8 @@ import threading
 import requests
 
 API_URL = "https://api.search.brave.com/res/v1/web/search"
-CACHE_DIR = Path.home() / ".chimere" / ".brave_cache"
+_chimere_home = Path(os.environ.get("CHIMERE_HOME", str(Path.home() / ".chimere")))
+CACHE_DIR = _chimere_home / ".brave_cache"
 CACHE_TTL_DEFAULT = 3600  # 1 hour
 RATE_LIMIT_INTERVAL = 1.1  # seconds between requests (free tier: 1 req/s)
 _last_request_time = 0
@@ -23,7 +24,7 @@ _rate_lock = threading.Lock()  # serialize Brave calls across threads
 # Auto-load env on import (needed when used as module from search_router)
 def _load_env():
     """Load BRAVE_API_KEY from ~/.chimere/.env if not already set."""
-    env_file = os.path.expanduser("~/.chimere/.env")
+    env_file = str(_chimere_home / ".env")
     if os.path.exists(env_file):
         with open(env_file) as f:
             for line in f:
