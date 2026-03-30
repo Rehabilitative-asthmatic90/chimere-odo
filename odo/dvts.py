@@ -90,18 +90,83 @@ def _generate_candidate(
         }
 
 
+def _score_candidate_heuristic(
+    user_text: str,
+    response_text: str,
+) -> dict[str, Any]:
+    """Heuristic scoring when ThinkPRM is unavailable.
+
+    Scores based on response length, structure (lists, headers), and
+    relevance (keyword overlap with query). Not as good as a real PRM
+    but differentiates between empty/short and substantive responses.
+    """
+    if not response_text:
+        return {"score": 0.0, "step_labels": [], "n_steps": 0,
+                "correct_steps": 0, "cot_preview": "", "error": "empty"}
+
+    score = 0.0
+
+    # Length score (0-0.3): prefer substantive responses, diminishing returns
+    length = len(response_text)
+    if length > 100:
+        score += min(0.3, 0.1 + 0.2 * min(length / 2000, 1.0))
+
+    # Structure score (0-0.3): lists, headers, citations indicate quality
+    import re
+    structure_signals = (
+        len(re.findall(r'^\s*[-*\d]+[.)]\s', response_text, re.MULTILINE)),  # list items
+        len(re.findall(r'^#+\s', response_text, re.MULTILINE)),  # markdown headers
+        len(re.findall(r'\[.*?\]', response_text)),  # citations/references
+    )
+    struct_count = sum(min(s, 5) for s in structure_signals)
+    score += min(0.3, struct_count * 0.03)
+
+    # Relevance score (0-0.4): keyword overlap with query
+    query_tokens = set(user_text.lower().split())
+    resp_tokens = set(response_text.lower().split())
+    if query_tokens:
+        overlap = len(query_tokens & resp_tokens) / len(query_tokens)
+        score += 0.4 * min(overlap, 1.0)
+
+    return {
+        "score": round(score, 3),
+        "step_labels": [],
+        "n_steps": 0,
+        "correct_steps": 0,
+        "cot_preview": "(heuristic scoring)",
+        "error": None,
+    }
+
+
 def _score_candidate(
     user_text: str,
     response_text: str,
     route_id: str = "",
 ) -> dict[str, Any]:
-    """Score a candidate with ThinkPRM step-level verification."""
+    """Score a candidate with ThinkPRM step-level verification.
+
+    Falls back to heuristic scoring if ThinkPRM is not enabled or unavailable.
+    """
+    # Check if ThinkPRM is enabled before attempting to call it
+    try:
+        from quality_gate import THINKPRM_ENABLED
+        if not THINKPRM_ENABLED:
+            return _score_candidate_heuristic(user_text, response_text)
+    except ImportError:
+        return _score_candidate_heuristic(user_text, response_text)
+
     from quality_gate import _call_thinkprm
 
     try:
         prefix_score, step_labels, cot = _call_thinkprm(
             user_text, response_text, route_id
         )
+        # Guard against degenerate scores (all steps incorrect = 0.0)
+        # which provide no differentiation between candidates
+        if prefix_score <= 0.0 and not step_labels:
+            log.warning("[DVTS] ThinkPRM returned score=%.3f with no step labels, "
+                        "falling back to heuristic", prefix_score)
+            return _score_candidate_heuristic(user_text, response_text)
         return {
             "score": prefix_score,
             "step_labels": step_labels,
@@ -111,14 +176,8 @@ def _score_candidate(
             "error": None,
         }
     except Exception as e:
-        return {
-            "score": 0.5,  # Neutral fallback
-            "step_labels": [],
-            "n_steps": 0,
-            "correct_steps": 0,
-            "cot_preview": "",
-            "error": str(e),
-        }
+        log.warning("[DVTS] ThinkPRM call failed (%s), using heuristic", e)
+        return _score_candidate_heuristic(user_text, response_text)
 
 
 def dvts_generate(

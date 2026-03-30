@@ -64,7 +64,7 @@ LLAMA_BASE = os.environ.get("ODO_BACKEND", "http://127.0.0.1:8081")
 FORWARD_TIMEOUT = int(os.environ.get("ODO_TIMEOUT", "300"))
 
 PIPELINES_DIR = Path(__file__).parent / "pipelines"
-DB_PATH = Path.home() / ".chimere/logs/odo.db"
+DB_PATH = Path.home() / ".openclaw/logs/odo.db"
 
 # ── Think Router Config ──────────────────────────────────────────────────────
 
@@ -101,7 +101,7 @@ CGRS_TRIGGER_IDS = {
 
 # Training pair logging
 LOG_TRAINING_PAIRS = os.environ.get("LOG_TRAINING_PAIRS", "1") == "1"
-TRAINING_PAIRS_PATH = Path.home() / ".chimere/logs/training_pairs.jsonl"
+TRAINING_PAIRS_PATH = Path.home() / ".openclaw/logs/training_pairs.jsonl"
 
 THINK_MIN_TOKENS = 4096
 
@@ -850,7 +850,7 @@ class ODOHandler(BaseHTTPRequestHandler):
             payload, params, decision, domain, route_id, route_strategy,
             route_conf, t0, user_text, pipeline,
             probe_entropy=probe_entropy, probe_ms=probe_ms,
-            entropy_info=entropy_info,
+            entropy_info=entropy_info, gen_mode=gen_mode,
         )
 
     def _decide_thinking(self, payload, user_text, has_img, pipeline):
@@ -945,7 +945,7 @@ class ODOHandler(BaseHTTPRequestHandler):
                              route_id, route_strategy, route_conf,
                              t0, user_text, pipeline,
                              probe_entropy=None, probe_ms=0,
-                             entropy_info=None):
+                             entropy_info=None, gen_mode="fast"):
         """Apply sampling params and forward. Integrates ABF."""
         real_payload = dict(payload)
         # Clean internal entropy hint before forwarding to backend
@@ -1339,11 +1339,17 @@ class ODOHandler(BaseHTTPRequestHandler):
                                  args=(score, reason, route_id,
                                        user_text, response_content)).start()
 
-        self.send_response(status)
-        self.send_header("Content-Type", resp.getheader("Content-Type", "application/json"))
-        self.send_header("Content-Length", str(len(resp_body)))
-        self.end_headers()
-        self.wfile.write(resp_body)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", resp.getheader("Content-Type", "application/json"))
+            self.send_header("Content-Length", str(len(resp_body)))
+            self.end_headers()
+            self.wfile.write(resp_body)
+        except (BrokenPipeError, ConnectionResetError):
+            # Client disconnected before we finished sending — not an error
+            print(f"[odo] client disconnected during buffer response (route={route_id})",
+                  file=sys.stderr, flush=True)
+            return
 
         # Quality gate for non-reflect routes (async, non-blocking)
         if (route_id and route_id not in REFLECT_ROUTES and user_text

@@ -23,8 +23,8 @@ from dynamic_engram import build_dynamic_engram
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 
-BIN = Path.home() / ".chimere/bin"
-VENV_RAG = Path.home() / ".chimere/venvs/kine-rag/bin/python3"
+BIN = Path.home() / ".openclaw/bin"
+VENV_RAG = Path.home() / ".openclaw/venvs/kine-rag/bin/python3"
 PYTHON = str(VENV_RAG) if VENV_RAG.exists() else sys.executable
 
 # ── Pattern detection (absorbed from message_router.py) ──────────────────────
@@ -118,7 +118,7 @@ def run_csv_analysis(csv_path: str) -> str | None:
 
 def run_cyberbro(observable: str) -> str | None:
     """Run CyberBro IoC analysis."""
-    tools_dir = Path.home() / ".chimere/agents/cyber/tools"
+    tools_dir = Path.home() / ".openclaw/agents/cyber/tools"
     code = (
         f"import sys, json, time; sys.path.insert(0, '{tools_dir}'); "
         f"from cyberbro_tool import analyze_observables, get_analysis_results; "
@@ -130,12 +130,17 @@ def run_cyberbro(observable: str) -> str | None:
 
 
 def run_research(query: str, depth: str = "standard") -> str | None:
-    """Run full research_orchestrator pipeline."""
-    script = BIN / "research_orchestrator.py"
+    """Run deep_search_sota.py for research enrichment.
+
+    Previously called research_orchestrator.py (600s timeout, too slow for
+    inline enrichment). Now uses deep_search_sota.py directly which has its
+    own internal caching and is bounded to ~60s for standard depth.
+    """
+    script = BIN / "deep_search_sota.py"
     if not script.exists():
         return None
-    return _run_script([PYTHON, str(script), query, "--depth", depth, "--report"],
-                       timeout=600, max_chars=12000)
+    return _run_script([PYTHON, str(script), query, "--depth", depth],
+                       timeout=90, max_chars=12000)
 
 
 # ── Dynamic Engram (Option A: system prompt injection) ───────────────────────
