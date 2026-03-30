@@ -1,7 +1,7 @@
 description: Cybersecurity analysis -- MITRE ATT&CK, CVE triage, threat intelligence
 engram:
   alpha: 0.3
-  table: ~/.chimere/engram/tables/cyber.engr
+  table: ~/.openclaw/data/engram/cyber.engr
 enrich:
   rag: true
   rag_collection: auto

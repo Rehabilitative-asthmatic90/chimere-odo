@@ -258,6 +258,114 @@ def inject_dynamic_engram_context(
         return None
 
 
+# ── Static Engram lookup (per-route .engr tables) ────────────────────────────
+
+ENGRAM_DATA_DIR = Path.home() / ".openclaw" / "data" / "engram"
+
+
+def inject_static_engram_context(
+    engram_table_name: str,
+    query: str,
+    top_k: int = 20,
+) -> str | None:
+    """Look up top n-gram predictions from a pre-built per-route .engr table.
+
+    Unlike dynamic_engram (built at query time from web results), this queries
+    a persistent domain-specific table built offline from curated corpora.
+
+    Args:
+        engram_table_name: table name (e.g. "kine", "code", "cyber") or full path.
+        query: user's query text.
+        top_k: number of top predictions to surface.
+
+    Returns:
+        Formatted text for system prompt injection, or None on failure.
+    """
+    if not engram_table_name or not query:
+        return None
+
+    # Resolve table path: accept bare name ("kine"), filename ("kine.engr"), or full path
+    table_name = engram_table_name.strip()
+
+    # Expand home dir if path starts with ~ or /
+    if table_name.startswith("~") or table_name.startswith("/"):
+        engr_path = Path(os.path.expanduser(table_name))
+    else:
+        # Bare name: look in canonical data dir
+        stem = table_name if table_name.endswith(".engr") else f"{table_name}.engr"
+        engr_path = ENGRAM_DATA_DIR / stem
+
+    if not engr_path.exists():
+        print(f"[STATIC_ENGRAM] Table not found: {engr_path}", file=sys.stderr, flush=True)
+        return None
+
+    try:
+        sys.path.insert(0, str(BIN))
+        from engram_query import EngramTable, load_tokenizer, format_token
+
+        table = EngramTable(str(engr_path))
+        tokenizer = load_tokenizer()
+
+        encoding = tokenizer.encode(query, add_special_tokens=False)
+        token_ids = list(encoding.ids)
+
+        if len(token_ids) < table.order:
+            return None
+
+        all_predictions: list[tuple[str, str, float]] = []
+
+        for i in range(len(token_ids) - table.order + 1):
+            window = token_ids[i:i + table.order]
+            predictions = table.lookup(window)
+            if not predictions:
+                continue
+
+            context_str = tokenizer.decode(window).strip()
+
+            for tok_id, prob in predictions[:3]:
+                if prob < 0.05:
+                    break
+                predicted_str = format_token(tokenizer, tok_id)
+                all_predictions.append((context_str, predicted_str, prob))
+
+        if not all_predictions:
+            return None
+
+        # Sort by confidence, deduplicate
+        all_predictions.sort(key=lambda x: -x[2])
+        seen: set = set()
+        unique_preds = []
+        for ctx, pred, prob in all_predictions:
+            key = (ctx, pred)
+            if key not in seen:
+                seen.add(key)
+                unique_preds.append((ctx, pred, prob))
+            if len(unique_preds) >= top_k:
+                break
+
+        if not unique_preds:
+            return None
+
+        lines = []
+        for ctx, pred, prob in unique_preds:
+            lines.append(f"  \"{ctx}\" -> \"{pred}\" ({prob:.0%})")
+
+        engram_text = (
+            "## Associations lexicales du domaine\n\n"
+            "Prédictions token issues de la base de connaissances domaine. "
+            "Utilise ces associations pour ancrer les termes techniques:\n\n"
+            + "\n".join(lines)
+        )
+
+        print(f"[STATIC_ENGRAM] Injected {len(unique_preds)} predictions "
+              f"from {engr_path.name}", file=sys.stderr, flush=True)
+        return engram_text
+
+    except Exception as e:
+        print(f"[STATIC_ENGRAM] Injection failed: {e}", file=sys.stderr, flush=True)
+        return None
+
+
 # ── Detection helpers ────────────────────────────────────────────────────────
 
 def detect_csv(text: str) -> str | None:
@@ -506,6 +614,16 @@ def enrich(payload: dict, route_id: str, user_text: str,
             if engram_context:
                 context_parts.append(engram_context)
                 tools_used.append("dynamic_engram")
+
+    # Static Engram lookup — per-route domain table configured in pipeline YAML
+    # engram_table was set by apply_pipeline() from pipeline engram.table
+    static_engram_table = result.pop("engram_table", None)
+    if static_engram_table:
+        result.pop("engram_alpha", None)  # consumed here, not forwarded to backend
+        static_engram_ctx = inject_static_engram_context(static_engram_table, user_text)
+        if static_engram_ctx:
+            context_parts.append(static_engram_ctx)
+            tools_used.append("static_engram")
 
     # Inject context into system prompt
     if context_parts:

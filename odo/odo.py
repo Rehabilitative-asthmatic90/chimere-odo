@@ -578,7 +578,7 @@ def log_decision(data: dict):
             "probe_ms, total_ms, prompt_len, sample_prompt, budget_retries, "
             "entropy_class, entropy_score) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (datetime.now().isoformat(),
+            (datetime.utcnow().isoformat(),
              data.get("route"), data.get("strategy"), data.get("confidence"),
              data.get("decision"), data.get("domain"),
              data.get("probe_entropy"), data.get("probe_ms"),
@@ -588,8 +588,8 @@ def log_decision(data: dict):
         )
         conn.commit()
         conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[odo] log_decision error: {e}", file=sys.stderr, flush=True)
 
 
 def _log_training_pair(user_text: str, reasoning: str, content: str, retries: int):
@@ -831,6 +831,7 @@ class ODOHandler(BaseHTTPRequestHandler):
                     "finish_reason": "stop",
                 }],
                 "usage": {"total_tokens": result["total_tokens"]},
+                "x_odo_route": route_id,
                 "odo": {
                     "route": route_id,
                     "pipeline": True,
@@ -1050,6 +1051,7 @@ class ODOHandler(BaseHTTPRequestHandler):
                         "reasoning_content": dvts_result.get("reasoning", ""),
                     }, "finish_reason": "stop", "index": 0}],
                     "usage": {"completion_tokens": 0},
+                    "x_odo_route": route_id,
                     "dvts": {
                         "score": dvts_result["score"],
                         "candidates": len(dvts_result.get("candidates", [])),
@@ -1065,12 +1067,25 @@ class ODOHandler(BaseHTTPRequestHandler):
                 print(f"[odo] DVTS: route={route_id} k={dvts_k} "
                       f"score={dvts_result['score']:.3f} {total_ms}ms",
                       flush=True)
+                odo_meta = {
+                    "route": route_id, "strategy": route_strategy,
+                    "confidence": route_conf, "decision": f"dvts/{gen_mode}",
+                    "domain": domain, "probe_entropy": probe_entropy,
+                    "probe_ms": probe_ms, "total_ms": total_ms,
+                    "prompt_len": len(user_text),
+                    "sample_prompt": user_text[:200], "budget_retries": 0,
+                }
+                if entropy_info:
+                    odo_meta["entropy_class"] = entropy_info.get("entropy_class")
+                    odo_meta["entropy_score"] = entropy_info.get("entropy_score")
+                threading.Thread(target=log_decision, daemon=True, args=(odo_meta,)).start()
                 return
             except Exception as e:
                 print(f"[odo] DVTS failed, falling back: {e}", flush=True)
 
         if needs_abf and not is_streaming:
             result, budget_retries = self._abf_monitor(real_payload, user_text, abf_threshold)
+            result["x_odo_route"] = route_id
             resp_body = json.dumps(result).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -1093,6 +1108,19 @@ class ODOHandler(BaseHTTPRequestHandler):
                 })
             except Exception as e:
                 self.send_error(502, str(e))
+                total_ms = int((time.time() - t0) * 1000)
+                odo_meta = {
+                    "route": route_id, "strategy": route_strategy,
+                    "confidence": route_conf, "decision": f"error/{gen_mode}",
+                    "domain": domain, "probe_entropy": probe_entropy,
+                    "probe_ms": probe_ms, "total_ms": total_ms,
+                    "prompt_len": len(user_text),
+                    "sample_prompt": user_text[:200], "budget_retries": 0,
+                }
+                if entropy_info:
+                    odo_meta["entropy_class"] = entropy_info.get("entropy_class")
+                    odo_meta["entropy_score"] = entropy_info.get("entropy_score")
+                threading.Thread(target=log_decision, daemon=True, args=(odo_meta,)).start()
                 return
 
             if is_streaming:
@@ -1243,11 +1271,19 @@ class ODOHandler(BaseHTTPRequestHandler):
                 line = resp.readline()
                 if not line:
                     break
+
+                # Before forwarding [DONE], inject x_odo_route as a custom SSE event
+                stripped = line.strip()
+                if stripped == b'data: [DONE]' and route_id:
+                    route_event = (
+                        b'data: ' + json.dumps({"x_odo_route": route_id}).encode() + b'\n\n'
+                    )
+                    self.wfile.write(route_event)
+
                 self.wfile.write(line)
                 self.wfile.flush()
 
                 # Parse SSE chunks to accumulate content
-                stripped = line.strip()
                 if stripped == b'data: [DONE]' or not stripped.startswith(b'data: '):
                     continue
                 try:
@@ -1354,6 +1390,7 @@ class ODOHandler(BaseHTTPRequestHandler):
             data = json.loads(resp_body)
             # Only if it's a valid chat completion response
             if "choices" in data:
+                data["x_odo_route"] = route_id
                 data["odo"] = {
                     "route": route_id,
                     "enriched": bool(route_id),  # enrichment happened

@@ -44,7 +44,8 @@ COLLECTION_MAP = {
 CHIMERE_DOC_DIRS = [
     Path.home() / "Bureau",
     Path.home() / ".chimere/workspaces/kevin",
-    Path.home() / ".claude/projects/-home-remondiere/memory",
+    # Claude Code memory (user-specific path, set via CHIMERE_CLAUDE_MEMORY env)
+    Path(os.environ.get("CHIMERE_CLAUDE_MEMORY", str(Path.home() / ".claude/memory"))),
 ]
 # Files to skip in chimere doc dirs (noisy or not useful for RAG)
 CHIMERE_SKIP_PATTERNS = {"HEARTBEAT.md", "BOOTSTRAP.md"}

@@ -1,7 +1,7 @@
 description: Software development and debugging
 engram:
   alpha: 0.3
-  table: ~/.chimere/engram/tables/code.engr
+  table: ~/.openclaw/data/engram/code.engr
 grammar: null
 lora:
   path: null

@@ -40,7 +40,7 @@ dvts:
 
 # Engram table (domain-specific n-grams)
 engram:
-  table: "~/.chimere/engram/tables/kine.engr"
+  table: "~/.openclaw/data/engram/kine.engr"
   alpha: 0.35
 
 # LoRA adapter (hot-swap)

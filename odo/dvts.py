@@ -185,7 +185,7 @@ def dvts_generate(
     user_text: str,
     route_id: str = "",
     k: int = DEFAULT_K,
-    max_tokens: int = 4096,
+    max_tokens: int = 16384,
     base_temperature: float = 0.7,
 ) -> dict[str, Any]:
     """Generate K candidates, score with ThinkPRM, return the best.
@@ -202,13 +202,25 @@ def dvts_generate(
     """
     t0 = time.monotonic()
 
+    # FORCE_THINK guard: with thinking enabled the thinking block alone can
+    # consume the full budget, leaving zero visible content and causing all
+    # candidates to score 0.000 → infinite retry loop.  Enforce a minimum of
+    # 8192 tokens so the thinking block (~4096) still leaves ~4096 for the
+    # actual response.
+    candidate_max_tokens = max(max_tokens, 8192)
+    if candidate_max_tokens != max_tokens:
+        log.info(
+            "[DVTS] max_tokens %d too low for FORCE_THINK, raised to %d",
+            max_tokens, candidate_max_tokens,
+        )
+
     # Phase 1: Generate K candidates sequentially (GPU single-slot)
     log.info("[DVTS] Generating %d candidates for: %s", k, user_text[:60])
     candidates = []
     for i in range(k):
         # Slightly vary temperature for diversity
         temp = base_temperature + (i * 0.05)
-        c = _generate_candidate(messages, temp, max_tokens, i)
+        c = _generate_candidate(messages, temp, candidate_max_tokens, i)
         if c["error"]:
             log.warning("[DVTS] Candidate %d failed: %s", i, c["error"])
         else:
