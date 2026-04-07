@@ -129,11 +129,52 @@ def run_web_search(query: str, depth: str = "quick") -> str | None:
 
 
 def run_csv_analysis(csv_path: str) -> str | None:
-    """Run analyze_csv.sh on a CSV file."""
+    """Run analyze_csv.sh on a CSV file.
+
+    Hardened against path injection (CodeQL alert):
+    - Reject any path that does not resolve to an existing **regular file**
+      (no symlinks, no directories, no devices).
+    - Require a `.csv` (case-insensitive) extension.
+    - Require the resolved canonical path to live under an allow-list of safe
+      roots (`$HOME`, `/tmp`, current working directory).
+    - Reject any input containing shell metacharacters even before resolving,
+      to defend against the bash-arg path of `_run_script`.
+    """
     script = _find_script("analyze_csv.sh")
-    if script is None or not os.path.exists(csv_path):
+    if script is None:
         return None
-    return _run_script(["bash", str(script), csv_path], timeout=240)
+
+    # Reject obvious shell injection attempts BEFORE touching the filesystem.
+    if not isinstance(csv_path, str) or not csv_path or any(
+        c in csv_path for c in ("\x00", "\n", "\r", ";", "|", "&", "`", "$", "<", ">", "\\")
+    ):
+        print(f"[CSV] rejected unsafe path (shell metas): {csv_path!r}", file=sys.stderr, flush=True)
+        return None
+
+    # Resolve canonical path; reject if it doesn't exist as a regular file.
+    try:
+        resolved = Path(csv_path).expanduser().resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        print(f"[CSV] cannot resolve path {csv_path!r}: {exc}", file=sys.stderr, flush=True)
+        return None
+    if not resolved.is_file():
+        print(f"[CSV] not a regular file: {resolved}", file=sys.stderr, flush=True)
+        return None
+    if resolved.suffix.lower() != ".csv":
+        print(f"[CSV] extension must be .csv: {resolved}", file=sys.stderr, flush=True)
+        return None
+
+    # Allow-list of root directories the CSV is permitted to live under.
+    safe_roots = [
+        Path.home().resolve(),
+        Path("/tmp").resolve(),
+        Path.cwd().resolve(),
+    ]
+    if not any(str(resolved).startswith(str(root) + os.sep) or resolved == root for root in safe_roots):
+        print(f"[CSV] outside allow-listed roots: {resolved}", file=sys.stderr, flush=True)
+        return None
+
+    return _run_script(["bash", str(script), str(resolved)], timeout=240)
 
 
 def run_cyberbro(observable: str) -> str | None:
@@ -306,16 +347,42 @@ def inject_static_engram_context(
     if not engram_table_name or not query:
         return None
 
-    # Resolve table path: accept bare name ("kine"), filename ("kine.engr"), or full path
+    # Hardened against path injection (CodeQL alert):
+    # Only accept BARE engram table names looked up under the canonical
+    # ENGRAM_DATA_DIR. The previous version supported `~` / `/` absolute
+    # paths reaching the user-supplied path through `Path.exists()`, which
+    # gave the API caller a file-existence probe on arbitrary FS locations
+    # plus a file-read primitive once the path was passed to `EngramTable`.
+    #
+    # The legitimate use case is "kine" / "code" / "cyber" / "general" — a
+    # short identifier matching one of the engram tables shipped under
+    # ENGRAM_DATA_DIR. We enforce this with a strict regex.
     table_name = engram_table_name.strip()
-
-    # Expand home dir if path starts with ~ or /
-    if table_name.startswith("~") or table_name.startswith("/"):
-        engr_path = Path(os.path.expanduser(table_name))
-    else:
-        # Bare name: look in canonical data dir
-        stem = table_name if table_name.endswith(".engr") else f"{table_name}.engr"
-        engr_path = ENGRAM_DATA_DIR / stem
+    # Strip an optional `.engr` suffix the caller may include.
+    if table_name.endswith(".engr"):
+        table_name = table_name[:-5]
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", table_name):
+        print(
+            f"[STATIC_ENGRAM] rejected unsafe table name {engram_table_name!r}: "
+            "must match [A-Za-z0-9_-]{1,64} (no path separators, no '..', no '~', no spaces)",
+            file=sys.stderr, flush=True,
+        )
+        return None
+    engr_path = ENGRAM_DATA_DIR / f"{table_name}.engr"
+    # Defense-in-depth: ensure the resolved canonical path is *still* under
+    # ENGRAM_DATA_DIR (would catch a future bug or env-var poisoning).
+    try:
+        resolved = engr_path.resolve(strict=False)
+        canonical_root = ENGRAM_DATA_DIR.resolve()
+    except (OSError, RuntimeError):
+        return None
+    if not str(resolved).startswith(str(canonical_root) + os.sep):
+        print(
+            f"[STATIC_ENGRAM] resolved path escapes ENGRAM_DATA_DIR: {resolved}",
+            file=sys.stderr, flush=True,
+        )
+        return None
+    engr_path = resolved
 
     if not engr_path.exists():
         print(f"[STATIC_ENGRAM] Table not found: {engr_path}", file=sys.stderr, flush=True)
